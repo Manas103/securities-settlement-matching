@@ -1,0 +1,12 @@
+$ mvn test
+[INFO] Running com.manas.settlementmatch.engine.MatchingEngineTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.120 s -- in com.manas.settlementmatch.engine.MatchingEngineTest
+[INFO] Running com.manas.settlementmatch.engine.ReferenceOracleDiffTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.120 s -- in com.manas.settlementmatch.engine.ReferenceOracleDiffTest
+[INFO] Running com.manas.settlementmatch.integration.SettlementMatchingIntegrationTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.354 s -- in com.manas.settlementmatch.integration.SettlementMatchingIntegrationTest
+[INFO] Running com.manas.settlementmatch.tolerance.ToleranceRuleSetTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in com.manas.settlementmatch.tolerance.ToleranceRuleSetTest
+[INFO] Results:
+[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS

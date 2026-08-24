@@ -1,0 +1,80 @@
+=== Securities Settlement Matching -- benchmark run ===
+started: 2026-08-24T16:08:23.152928100Z
+
+-- dataset --
+trade-reference pairs: 50000
+total instructions: 100000
+seeded breaks: 48
+
+-- canonical run (in order, no duplicates) --
+elapsed: 2865 ms
+matched positions: 49952
+breaks filed: 48
+seeded breaks caught: 48 / 48
+false matches (breaks filed on an un-seeded, genuinely matching pair): 0
+messages still awaiting a counterpart at end of run: 0
+distinct message ids seen: 100000
+
+-- break field-name breakdown (which field type each seeded break was caught on) --
+TRD-00001041: quantity
+TRD-00003123: currency
+TRD-00007287: settlementDate
+TRD-00008328: currency
+TRD-00002082: settlementDate
+TRD-00006246: quantity
+TRD-00000000: price
+TRD-00004164: isin
+TRD-00005205: price
+TRD-00009369: isin
+TRD-00011451: quantity
+TRD-00013533: currency
+TRD-00012492: settlementDate
+TRD-00010410: price
+TRD-00014574: isin
+TRD-00015615: price
+TRD-00020820: price
+TRD-00021861: quantity
+TRD-00017697: settlementDate
+TRD-00018738: currency
+TRD-00019779: isin
+TRD-00023943: currency
+TRD-00016656: quantity
+TRD-00022902: settlementDate
+TRD-00024984: isin
+TRD-00029148: currency
+TRD-00030189: isin
+TRD-00031230: price
+TRD-00026025: price
+TRD-00032271: quantity
+TRD-00027066: quantity
+TRD-00028107: settlementDate
+TRD-00034353: currency
+TRD-00037476: quantity
+TRD-00041640: price
+TRD-00033312: settlementDate
+TRD-00038517: settlementDate
+TRD-00039558: currency
+TRD-00035394: isin
+TRD-00036435: price
+TRD-00040599: isin
+TRD-00044763: currency
+TRD-00045804: isin
+TRD-00046845: price
+TRD-00042681: quantity
+TRD-00047886: quantity
+TRD-00048927: settlementDate
+TRD-00043722: settlementDate
+
+canonical final-state digest (SHA-256): 63c7645e7e019873366f1743f656ddd96c1615569bf56c01a6dab01c8b6dcaf6
+
+-- noisy replay (5% duplicated, fully shuffled out of trade-reference order) --
+noisy stream size: 105000 (5000 duplicated deliveries)
+elapsed: 1075 ms
+matched positions: 49952
+breaks filed: 48
+distinct message ids seen (post-dedup): 100000
+noisy final-state digest (SHA-256): 63c7645e7e019873366f1743f656ddd96c1615569bf56c01a6dab01c8b6dcaf6
+
+identical final state after noisy replay: true
+
+finished: 2026-08-24T16:08:28.484901300Z

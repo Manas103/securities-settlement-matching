@@ -1,0 +1,30 @@
+# Test / measurement profile: an in-memory H2 database in PostgreSQL
+# compatibility mode. No real PostgreSQL is reachable in this build
+# environment; spring.kafka.bootstrap-servers is overridden per-test via
+# @DynamicPropertySource once the embedded Kafka broker has picked its port.
+spring:
+  datasource:
+    url: jdbc:h2:mem:settlement_matching;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+  kafka:
+    consumer:
+      group-id: settlement-matching-service-test
+
+settlement:
+  kafka:
+    topic: settlement-instructions-test
+  tolerance-rules-resource: tolerance-rules.yml
+
+logging:
+  level:
+    com.manas.settlementmatch: INFO
+    org.apache.kafka: WARN

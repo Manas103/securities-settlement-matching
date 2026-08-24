@@ -1,0 +1,22 @@
+# Configurable tolerance ruleset for comparing the two sides of a settlement
+# instruction. This is data, not code: adding a field, tightening a
+# tolerance, or switching quantity to an absolute band is a YAML edit, not a
+# Java change. Loaded once at startup by ToleranceRuleSetLoader.
+#
+# comparison: EXACT | ABSOLUTE | RELATIVE_BPS
+#   EXACT           values must be identical
+#   ABSOLUTE        numeric values may differ by up to toleranceAbsolute
+#   RELATIVE_BPS    numeric values may differ by up to toleranceBps basis
+#                   points of the average of the two values
+fields:
+  isin:
+    comparison: EXACT
+  currency:
+    comparison: EXACT
+  settlementDate:
+    comparison: EXACT
+  quantity:
+    comparison: EXACT
+  price:
+    comparison: RELATIVE_BPS
+    toleranceBps: 5
