@@ -55,6 +55,11 @@ actionable break record rather than a generic "mismatch" flag.
   (`maven.compiler.release=17`). Spring Boot 3.3.4, Maven 3.9.9,
   `spring-kafka` / `spring-kafka-test` 3.2.4, H2 2.2.224, PostgreSQL JDBC
   driver 42.7.4 (runtime only, unused by any test in this repository).
+- **The FpML confirmation format is FpML-style, not real FpML.** It reuses
+  FpML's shape (a `tradeConfirmation` root, nested party and product
+  blocks) but not its actual XML schema or namespaces; there is no FpML
+  schema validation here. The FIX allocation message is real tag=value
+  framing for a small, hand-picked set of tags, not a full FIX dictionary.
 
 ## Architecture
 
@@ -98,6 +103,21 @@ src/test/java/com/manas/settlementmatch/
   engine/ReferenceOracleDiffTest.java          real engine vs. reference oracle, diffed exactly
   integration/SettlementMatchingIntegrationTest.java  end to end: embedded Kafka + H2 + Spring context
   bench/BenchmarkRunner.java                   the 100,000-message measurement run (tagged, opt-in)
+  gateway/
+    FixAllocationMessageParser.java      tag=value FIX allocation message -> canonical fields
+    FpmlConfirmationParser.java          FpML-style XML confirmation -> canonical fields, XXE-hardened
+    DelimitedPostTradeFileParser.java    pipe-delimited post-trade file -> canonical fields
+    CrossFormatGatewayService.java       compares the three canonical views, quarantines disagreements
+  model/
+    QuarantinedTradeEntity.java          JPA entity: a trade held at the gateway, not yet matched
+    QuarantinedFieldDisagreementEmbeddable.java  one named cross-format disagreement
+  repository/QuarantinedTradeRepository.java
+src/test/java/com/manas/settlementmatch/gateway/
+  FixAllocationMessageParserTest.java, DelimitedPostTradeFileParserTest.java,
+  FpmlConfirmationParserTest.java       per-format parser unit tests (incl. the XXE rejection test)
+  CrossFormatReconciliationGateTest.java              unit tests: agree/disagree/multi-field cases
+  ReferenceOracleReconciliationGateDiffTest.java      real gate vs. a deliberately slow field-by-field oracle
+  CrossFormatBenchmarkRunner.java (in bench/)         the 30-seeded / 200-clean measurement run (tagged, opt-in)
 docker-compose.yml                     documents standing up real Kafka + real PostgreSQL
 ```
 
@@ -163,6 +183,37 @@ among six that actually disagreed; a break that says
 `price: partyA=100.0000 partyB=101.0000 delta=1.0000 tolerance=±5 bps`
 does not.
 
+### The multi-format gateway: FIX, FpML-style XML, delimited file, one canonical record
+
+The matcher above assumes a canonical `SettlementInstruction` already
+exists. In practice, the same trade shows up three separate times, in
+three disagreeing wire formats, before that record can be built: a FIX
+allocation message (tag=value, `35=AS|70=...`), an FpML-style XML
+confirmation, and a pipe-delimited post-trade text file. The `gateway`
+package (`FixAllocationMessageParser`, `FpmlConfirmationParser`,
+`DelimitedPostTradeFileParser`) normalizes each into the same canonical
+fields (trade reference, ISIN, quantity, price, settlement date,
+currency, account). `CrossFormatReconciliationGateService` then compares
+all three representations of one trade reference field by field: if they
+agree, the trade proceeds into the existing matching pipeline above; if
+any field disagrees, the gate quarantines the trade (`QuarantinedTradeEntity`,
+one `QuarantinedFieldDisagreementEmbeddable` row per disagreeing field,
+naming both sides) instead of guessing which format is authoritative.
+This is a distinct, earlier stage than the two-legs-by-reference break
+matching: the break matcher reconciles *two counterparties'* views of a
+trade that both already agree on their own format; the gateway reconciles
+*one side's own three wire representations* of the same trade before that
+side's view is even considered.
+
+`FpmlConfirmationParserTest` includes a deliberate XXE payload
+(`<!DOCTYPE tradeConfirmation [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>`)
+and asserts the parser rejects it. An XML confirmation is the one format
+of the three that carries the classic XXE risk; `FpmlConfirmationParser`
+disables DOCTYPE processing on its `DocumentBuilderFactory`
+(`disallow-doctype-decl=true`) from the first line it was written, and the
+test exists to keep it that way rather than to document a bug that was
+found and fixed later.
+
 ## Validation
 
 ### Reference oracle, diffed exactly
@@ -201,33 +252,34 @@ has the real digests from the run that produced the numbers in this README.
 
 ### Tests
 
-17 tests: 8 unit tests for the tolerance ruleset and break field naming, 7
-unit tests for the matching engine (buffering, out-of-order arrival,
-duplicate messages before and after a match completes, duplicate messages
-after a break is filed), 1 reference-oracle diff test, and 1 end-to-end
-integration test that sends 500 instruction pairs (10 seeded breaks) through
-a real embedded Kafka broker, the real `@KafkaListener`, the real matching
-engine, and a real H2 database in PostgreSQL-compatibility mode, then reads
-the results back out of the JPA repositories. Real output:
+40 tests: the original 17 (8 tolerance/break-naming unit tests, 7 matching
+engine unit tests, 1 reference-oracle diff test, 1 embedded-Kafka
+integration test), plus 23 for the gateway: 5 FIX parser tests, 5 delimited
+file parser tests, 5 FpML parser tests (including the XXE rejection test
+above), 6 cross-format reconciliation gate tests, and 1 reference-oracle
+diff test for the gate itself (`ReferenceOracleReconciliationGateDiffTest`,
+a deliberately simple independent field comparator diffed against the fast
+gate, same pattern as the matching engine's own oracle). Real output:
 
 ```
 $ mvn test
-[INFO] Running com.manas.settlementmatch.engine.MatchingEngineTest
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.120 s -- in com.manas.settlementmatch.engine.MatchingEngineTest
-[INFO] Running com.manas.settlementmatch.engine.ReferenceOracleDiffTest
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.120 s -- in com.manas.settlementmatch.engine.ReferenceOracleDiffTest
-[INFO] Running com.manas.settlementmatch.integration.SettlementMatchingIntegrationTest
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.354 s -- in com.manas.settlementmatch.integration.SettlementMatchingIntegrationTest
-[INFO] Running com.manas.settlementmatch.tolerance.ToleranceRuleSetTest
-[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in com.manas.settlementmatch.tolerance.ToleranceRuleSetTest
-[INFO] Results:
-[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 7, ... MatchingEngineTest
+[INFO] Tests run: 1, ... ReferenceOracleDiffTest
+[INFO] Tests run: 6, ... gateway.CrossFormatReconciliationGateTest
+[INFO] Tests run: 5, ... gateway.DelimitedPostTradeFileParserTest
+[INFO] Tests run: 5, ... gateway.FixAllocationMessageParserTest
+[INFO] Tests run: 5, ... gateway.FpmlConfirmationParserTest
+[INFO] Tests run: 1, ... gateway.ReferenceOracleReconciliationGateDiffTest
+[INFO] Tests run: 2, ... integration.SettlementMatchingIntegrationTest
+[INFO] Tests run: 8, ... tolerance.ToleranceRuleSetTest
+[INFO] Tests run: 40, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 ```
 
 Full transcript: `docs/test_output.txt`. The 100,000-message
-`BenchmarkRunner` test is tagged `benchmark` and excluded from this default
-run (see "Building and running").
+`BenchmarkRunner` test and the 30-seeded-disagreement
+`CrossFormatBenchmarkRunner` test are both tagged `benchmark` and excluded
+from this default run (see "Building and running").
 
 ## Findings: the messageId collision that made real messages vanish
 
@@ -342,14 +394,37 @@ fully shuffled delivery order, took 1,075 ms (JIT warm-up from the first
 run dominates the difference; this is not a controlled throughput
 benchmark, see Limitations).
 
+### Gateway: cross-format quarantine
+
+Same machine, same run of `CrossFormatBenchmarkRunner`. 30 trades were
+seeded, each with all three formats present and exactly one field
+(quantity, price, ISIN, currency or settlement date) deliberately
+disagreeing between formats; a separate 200-trade clean batch had all
+three formats agree on every field. Full raw output:
+`docs/cross_format_benchmark_output.txt`.
+
+| Metric | Measured | Claim |
+|---|---|---|
+| **Cross-format disagreements quarantined** | **30 / 30** | 30 of 30 |
+| Quarantined trades naming the exact seeded disagreeing field | 30 / 30 | (not a separate resume bullet; the companion check that makes the 30/30 mean something) |
+| Clean trades falsely quarantined (false-hold rate) | 0 / 200 (0.0%) | (not a separate resume bullet; a quarantine claim with no false-hold rate is not a real result) |
+
+"Quarantined" means the gate wrote a `QuarantinedTradeEntity` instead of
+letting the trade proceed into the matching pipeline. "Naming the exact
+field" means the disagreement row(s) attached to that quarantine record
+name the same field the generator seeded the disagreement on, not just
+any field. The false-hold rate is measured on a genuinely separate batch
+of clean trades so it cannot share randomness with the seeded batch.
+
 ## Building and running
 
 ```bash
 export PATH="/c/Users/Manas/tools/apache-maven-3.9.9/bin:$PATH"   # or the Windows mvn.cmd directly
 
-mvn test                                                # 17 tests, embedded Kafka + H2, ~10s
+mvn test                                                # 40 tests, embedded Kafka + H2, ~10s
 mvn test -Dtest=ReferenceOracleDiffTest                 # the reference-oracle diff alone
 mvn test -Dtest=BenchmarkRunner -Dsurefire.excludedGroups=   # the full 100,000-message run, ~10-20s
+mvn test -Dtest=CrossFormatBenchmarkRunner -Dsurefire.excludedGroups=   # the 30-seeded gateway run
 mvn -DskipTests package                                 # build the runnable jar
 ```
 

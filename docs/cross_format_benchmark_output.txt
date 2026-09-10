@@ -1,0 +1,30 @@
+Sep 10, 2026 10:26:58 AM org.junit.platform.launcher.core.LauncherConfigurationParameters loadClasspathResource
+WARNING: Discovered 2 'junit-platform.properties' configuration files in the classpath; only the first will be used.
+Sep 10, 2026 10:26:58 AM org.junit.platform.launcher.core.LauncherConfigurationParameters loadClasspathResource
+WARNING: Discovered 2 'junit-platform.properties' configuration files in the classpath; only the first will be used.
+Sep 10, 2026 10:26:58 AM org.junit.platform.launcher.core.LauncherConfigurationParameters loadClasspathResource
+WARNING: Discovered 2 'junit-platform.properties' configuration files in the classpath; only the first will be used.
+=== Multi-Protocol Gateway -- cross-format reconciliation benchmark run ===
+started: 2026-09-10T14:26:58.797562100Z
+
+-- claim: FIX + FpML-style + delimited normalize into one canonical record --
+result: true
+
+-- claim: 30 of 30 cross-format disagreements quarantined rather than guessed --
+seeded disagreements: 30
+trades in this sample: 30 (all seeded; every trade in this batch has a disagreement)
+quarantined (of the seeded set): 30 / 30
+quarantined naming exactly the seeded disagreeing field: 30 / 30
+total quarantined by the gate: 30
+total reconciled by the gate: 0
+still incomplete at end of run: 0
+
+-- companion claim: cross_format_false_hold_rate (clean trades falsely quarantined) --
+clean trades in this sample (all three formats agree on every field): 200
+falsely quarantined: 0 / 200
+false-hold rate: 0.0
+reconciled: 200 / 200
+still incomplete at end of run: 0
+
+finished: 2026-09-10T14:26:58.951693600Z
+

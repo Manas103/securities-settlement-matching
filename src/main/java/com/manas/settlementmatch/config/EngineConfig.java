@@ -1,6 +1,7 @@
 package com.manas.settlementmatch.config;
 
 import com.manas.settlementmatch.engine.MatchingEngine;
+import com.manas.settlementmatch.gateway.CrossFormatReconciliationGate;
 import com.manas.settlementmatch.tolerance.ToleranceRuleSet;
 import com.manas.settlementmatch.tolerance.ToleranceRuleSetLoader;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,5 +19,10 @@ public class EngineConfig {
     @Bean
     public MatchingEngine matchingEngine(ToleranceRuleSet toleranceRuleSet) {
         return new MatchingEngine(toleranceRuleSet);
+    }
+
+    @Bean
+    public CrossFormatReconciliationGate crossFormatReconciliationGate() {
+        return new CrossFormatReconciliationGate();
     }
 }

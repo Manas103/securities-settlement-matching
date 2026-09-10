@@ -1,5 +1,13 @@
+10:26:54.672 [data-plane-kafka-request-handler-2] INFO kafka.coordinator.group.GroupCoordinator -- [GroupCoordinator 0]: Group bench-group-noisy with generation 2 is now empty (__consumer_offsets-9)
+10:26:54.672 [data-plane-kafka-request-handler-2] INFO kafka.coordinator.group.GroupCoordinator -- [GroupCoordinator 0]: Member MemberMetadata(memberId=consumer-bench-group-noisy-2-aba9ef2e-b506-4820-a7ed-74115f7c05aa, groupInstanceId=None, clientId=consumer-bench-group-noisy-2, clientHost=/127.0.0.1, sessionTimeoutMs=45000, rebalanceTimeoutMs=300000, supportedProtocols=List(range, cooperative-sticky)) has left group bench-group-noisy through explicit `LeaveGroup`; client reason: the consumer is being closed
+10:26:55.172 [main] INFO org.apache.kafka.clients.FetchSessionHandler -- [Consumer clientId=consumer-bench-group-noisy-2, groupId=bench-group-noisy] Node 0 sent an invalid full fetch response with extraIds=(Hm9XUDUAQJaXXkGbISv77Q), response=()
+10:26:55.173 [main] INFO org.apache.kafka.common.metrics.Metrics -- Metrics scheduler closed
+10:26:55.173 [main] INFO org.apache.kafka.common.metrics.Metrics -- Closing reporter org.apache.kafka.common.metrics.JmxReporter
+10:26:55.173 [main] INFO org.apache.kafka.common.metrics.Metrics -- Closing reporter org.apache.kafka.common.telemetry.internals.ClientTelemetryReporter
+10:26:55.173 [main] INFO org.apache.kafka.common.metrics.Metrics -- Metrics reporters closed
+10:26:55.174 [main] INFO org.apache.kafka.common.utils.AppInfoParser -- App info kafka.consumer for consumer-bench-group-noisy-2 unregistered
 === Securities Settlement Matching -- benchmark run ===
-started: 2026-08-24T16:08:23.152928100Z
+started: 2026-09-10T14:26:50.320245700Z
 
 -- dataset --
 trade-reference pairs: 50000
@@ -7,7 +15,7 @@ total instructions: 100000
 seeded breaks: 48
 
 -- canonical run (in order, no duplicates) --
-elapsed: 2865 ms
+elapsed: 2282 ms
 matched positions: 49952
 breaks filed: 48
 seeded breaks caught: 48 / 48
@@ -69,7 +77,7 @@ canonical final-state digest (SHA-256): 63c7645e7e019873366f1743f656ddd96c161556
 
 -- noisy replay (5% duplicated, fully shuffled out of trade-reference order) --
 noisy stream size: 105000 (5000 duplicated deliveries)
-elapsed: 1075 ms
+elapsed: 1197 ms
 matched positions: 49952
 breaks filed: 48
 distinct message ids seen (post-dedup): 100000
@@ -77,4 +85,7 @@ noisy final-state digest (SHA-256): 63c7645e7e019873366f1743f656ddd96c1615569bf5
 
 identical final state after noisy replay: true
 
-finished: 2026-08-24T16:08:28.484901300Z
+finished: 2026-09-10T14:26:55.216537Z
+
+10:26:55.251 [kafka-cluster-test-kit-executor-2] INFO kafka.server.BrokerServer -- [BrokerServer id=0] Transition from STARTED to SHUTTING_DOWN
+10:26:55.251 [kafka-cluster-test-kit-executor-2] INFO kafka.server.BrokerServer -- [BrokerServer id=0] shutting down
