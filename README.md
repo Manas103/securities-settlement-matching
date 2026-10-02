@@ -51,10 +51,32 @@ actionable break record rather than a generic "mismatch" flag.
   the Hibernate PostgreSQL dialect; `src/test/resources/application.yml`
   is the only place H2 is configured.
 - **Machine and toolchain.** AMD Ryzen 7 7800X3D, 8 physical / 16 logical
-  cores, Windows 11 Home. JDK 21 (Temurin) compiling to Java 17 bytecode
-  (`maven.compiler.release=17`). Spring Boot 3.3.4, Maven 3.9.9,
-  `spring-kafka` / `spring-kafka-test` 3.2.4, H2 2.2.224, PostgreSQL JDBC
-  driver 42.7.4 (runtime only, unused by any test in this repository).
+  cores, Windows 11 Home. JDK 21 (Temurin) compiling to Java 21 bytecode
+  (`maven.compiler.release=21`, bumped from 17 as of the golden-copy
+  extension below: Spring Boot 3.3.4 already supports a Java 21 target
+  cleanly, and the full 40-test original suite was re-run and passed
+  unchanged at 21 before any new code was added). Spring Boot 3.3.4, Maven
+  3.9.9, `spring-kafka` / `spring-kafka-test` 3.2.4, `spring-boot-starter-web`
+  and `springdoc-openapi-starter-webmvc-ui` 2.6.0 (added for the golden-copy
+  REST API below; nothing else in this repository is a REST API), H2
+  2.2.224, PostgreSQL JDBC driver 42.7.4 (runtime only, unused by any test
+  in this repository).
+- **The golden-copy security master's four vendor identifiers are
+  synthetic.** `IdentifierCrosswalk` generates CUSIP, ISIN and SEDOL
+  identifiers whose check digits are computed with the real, publicly
+  documented check-digit algorithm for each scheme (validated in
+  `IdentifierCrosswalkTest` against Apple Inc.'s real, publicly known CUSIP
+  037833100 and ISIN US0378331005), but the base characters underneath the
+  check digit are deterministically generated from an internal sequence
+  number, not drawn from any real issued security. Tickers are plain
+  synthetic four-letter strings; real tickers carry no checksum to borrow.
+- **Golden security records are computed in memory, not persisted to
+  PostgreSQL.** Unlike the matching engine's breaks and matched positions,
+  `GoldenCopySecurityService` recomputes the golden copy from the four
+  vendor feeds once at application startup and serves it from memory. This
+  is a disclosed scope choice: the resume claim is that the REST API serves
+  the consolidated record and its lineage, which an in-memory
+  consolidation already does correctly.
 - **The FpML confirmation format is FpML-style, not real FpML.** It reuses
   FpML's shape (a `tradeConfirmation` root, nested party and product
   blocks) but not its actual XML schema or namespaces; there is no FpML
@@ -118,8 +140,54 @@ src/test/java/com/manas/settlementmatch/gateway/
   CrossFormatReconciliationGateTest.java              unit tests: agree/disagree/multi-field cases
   ReferenceOracleReconciliationGateDiffTest.java      real gate vs. a deliberately slow field-by-field oracle
   CrossFormatBenchmarkRunner.java (in bench/)         the 30-seeded / 200-clean measurement run (tagged, opt-in)
+src/main/java/com/manas/settlementmatch/goldencopy/
+  IdentifierScheme.java                 CUSIP | ISIN | SEDOL | TICKER
+  Vendor.java                           the four vendor feeds, each native to one scheme
+  SecurityIdentifiers.java              one security's identifiers across all four schemes
+  GoldenField.java                      the golden fields (name, country, currency, sector, maturity, coupon, exchange)
+  GoldenSecurityRecord.java             the consolidated record: per-field value + lineage (vendor id, or held-for-owner)
+  GoldenCopyConsolidationEngine.java    the real engine: applies survivorship-rules.yml, resolves or holds
+  GoldenCopyReferenceOracle.java        deliberately slow, independently coded consolidation, diffed exactly
+  GoldenCopySecurityService.java        in-memory store, built once at startup from the four vendor feeds
+  GoldenCopySecurityController.java     REST API: by-identifier lookup (any of the four schemes), list-all
+  GoldenSecurityRecordResponse.java     DTO naming the vendor record id (or data owner) behind every field
+src/main/java/com/manas/settlementmatch/generator/
+  VendorFeedGenerator.java              seeded, deterministic four-vendor synthetic feed generator
+  GoldenCopyConflictGenerator.java       seeds the 40 cross-vendor conflict scenarios for the benchmark
+src/main/resources/
+  goldencopy-survivorship-rules.yml     per-field precedence + named data owner (data, not code)
+src/test/java/com/manas/settlementmatch/goldencopy/
+  IdentifierCrosswalkTest.java          real check-digit validation (incl. Apple's real CUSIP/ISIN)
+  SurvivorshipRuleSetTest.java          precedence loading and the empty-precedence held-for-owner path
+  GoldenCopyConsolidationEngineTest.java resolve-by-rule, hold-for-owner, and missing-vendor cases
+  GoldenCopyReferenceOracleDiffTest.java real engine vs. oracle, diffed exactly over a 400-security sample
+  GoldenCopySecurityControllerIntegrationTest.java  full Spring context, real HTTP, lineage in the response
+src/test/java/com/manas/settlementmatch/bench/
+  GoldenCopyBenchmarkRunner.java        the 40-seeded-conflict / 250,000-record measurement run (tagged, opt-in)
 docker-compose.yml                     documents standing up real Kafka + real PostgreSQL
 ```
+
+### The golden-copy security master: four vendors, one record, named lineage
+
+The gateway above reconciles one side's own three wire formats of a single
+trade. The golden-copy security master is a different problem one layer up
+the stack: four independent vendors each publish their own view of the
+*same security*, each keyed on a different identifier scheme (Argus on
+CUSIP, Meridian on ISIN, Northbridge on SEDOL, Coastline on ticker), and
+disagree on individual fields (country, sector, coupon, and so on)
+constantly. `IdentifierScheme`/`SecurityIdentifiers` cross-reference a
+security across all four schemes to one `internalKey`; for each golden
+field, `GoldenCopyConsolidationEngine` walks that field's declared
+precedence order in `goldencopy-survivorship-rules.yml` and takes the first
+vendor in the list that actually carries a non-null value, recording that
+vendor's own record id as the field's lineage. A field with no declared
+precedence, or whose entire declared precedence list is missing the value,
+is never guessed or defaulted: it is held for the named data owner the
+rules file declares for that field (`SurvivorshipRuleSetTest`,
+`GoldenCopyConsolidationEngineTest` both pin this path explicitly).
+`GoldenCopySecurityController` serves the result over REST, keyed by any of
+the four identifier schemes, with every field in the response naming either
+the vendor record id that supplied it or the data owner it is held for.
 
 ### Why the engine has no Kafka or JPA dependency
 
@@ -250,16 +318,34 @@ canonical serialization of each engine's final matched-position and break
 state, and asserts the two digests are identical. `docs/benchmark_output.txt`
 has the real digests from the run that produced the numbers in this README.
 
+### Golden-copy reference oracle, diffed exactly
+
+`GoldenCopyReferenceOracle` is a second, independently coded consolidation:
+no precedence index, no shared lookup helpers with the real engine, a plain
+field-by-field walk of the declared precedence list (or the held-for-owner
+path) for every security. `GoldenCopyReferenceOracleDiffTest` runs both the
+real `GoldenCopyConsolidationEngine` and the oracle over the same 400
+synthetic securities and asserts an exact match on every golden field's
+resolved value and lineage, not just on the final resolved value:
+
+```
+golden-copy reference-oracle diff: sample size = 400, fast engine securities = 400, oracle securities = 400
+golden-copy reference-oracle diff: exact agreement = true
+```
+
 ### Tests
 
-40 tests: the original 17 (8 tolerance/break-naming unit tests, 7 matching
+62 tests: the original 40 (8 tolerance/break-naming unit tests, 7 matching
 engine unit tests, 1 reference-oracle diff test, 1 embedded-Kafka
 integration test), plus 23 for the gateway: 5 FIX parser tests, 5 delimited
 file parser tests, 5 FpML parser tests (including the XXE rejection test
 above), 6 cross-format reconciliation gate tests, and 1 reference-oracle
 diff test for the gate itself (`ReferenceOracleReconciliationGateDiffTest`,
 a deliberately simple independent field comparator diffed against the fast
-gate, same pattern as the matching engine's own oracle). Real output:
+gate, same pattern as the matching engine's own oracle), plus 22 for the
+golden-copy security master: 5 identifier-crosswalk tests, 5 survivorship
+rule-set tests, 8 consolidation-engine tests, 1 reference-oracle diff test,
+and 3 full-context REST integration tests. Real output:
 
 ```
 $ mvn test
@@ -270,15 +356,21 @@ $ mvn test
 [INFO] Tests run: 5, ... gateway.FixAllocationMessageParserTest
 [INFO] Tests run: 5, ... gateway.FpmlConfirmationParserTest
 [INFO] Tests run: 1, ... gateway.ReferenceOracleReconciliationGateDiffTest
+[INFO] Tests run: 8, ... goldencopy.GoldenCopyConsolidationEngineTest
+[INFO] Tests run: 1, ... goldencopy.GoldenCopyReferenceOracleDiffTest
+[INFO] Tests run: 3, ... goldencopy.GoldenCopySecurityControllerIntegrationTest
+[INFO] Tests run: 5, ... goldencopy.IdentifierCrosswalkTest
+[INFO] Tests run: 5, ... goldencopy.SurvivorshipRuleSetTest
 [INFO] Tests run: 2, ... integration.SettlementMatchingIntegrationTest
 [INFO] Tests run: 8, ... tolerance.ToleranceRuleSetTest
-[INFO] Tests run: 40, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 62, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 ```
 
 Full transcript: `docs/test_output.txt`. The 100,000-message
-`BenchmarkRunner` test and the 30-seeded-disagreement
-`CrossFormatBenchmarkRunner` test are both tagged `benchmark` and excluded
+`BenchmarkRunner` test, the 30-seeded-disagreement
+`CrossFormatBenchmarkRunner` test, and the 250,000-record
+`GoldenCopyBenchmarkRunner` test are all tagged `benchmark` and excluded
 from this default run (see "Building and running").
 
 ## Findings: the messageId collision that made real messages vanish
@@ -416,15 +508,46 @@ name the same field the generator seeded the disagreement on, not just
 any field. The false-hold rate is measured on a genuinely separate batch
 of clean trades so it cannot share randomness with the seeded batch.
 
+### Golden-copy: 40/40 seeded conflicts, 0 silent merges over 250,000 records
+
+Same machine, `GoldenCopyBenchmarkRunner`. 40 cross-vendor conflicts were
+seeded across the four feeds' field-level claims, covering both
+rule-resolvable disagreements and the empty-precedence held-for-owner case;
+separately, all four vendor feeds were generated at full scale and
+consolidated. Full raw output: `docs/golden_copy_benchmark_output.txt`.
+
+| Metric | Measured | Claim |
+|---|---|---|
+| **Seeded cross-vendor conflicts resolved by the correct rule or held** | **40 / 40** | 40 of 40 |
+| Securities consolidated | 250,000 / 250,000 | 250,000 records |
+| Golden fields evaluated | 1,750,000 (7 fields x 250,000 securities) | (denominator for the row below) |
+| Resolved fields | 1,731,144 | (not a separate resume bullet) |
+| Held-for-owner fields | 18,856 | (not a separate resume bullet; fields with no rule or a missing top-precedence vendor) |
+| **Silent merges** | **0** | 0 |
+| Consolidation wall time | 318 ms | (not a resume claim; included for context) |
+| Reference-oracle diff (400-security sample) | exact agreement: true | exact agreement with an independent reference oracle |
+
+"Silent merge" means a cross-vendor field disagreement that was neither
+resolved by a cited precedence rule nor explicitly held for a named owner,
+i.e. a value that reached the golden record by any path other than those
+two. The 400-security reference-oracle sample (not the full 250,000) is
+the scale `GoldenCopyReferenceOracleDiffTest` runs at by default, the same
+tradeoff the settlement matcher's own O(n^2) oracle makes above.
+
 ## Building and running
 
 ```bash
 export PATH="/c/Users/Manas/tools/apache-maven-3.9.9/bin:$PATH"   # or the Windows mvn.cmd directly
 
-mvn test                                                # 40 tests, embedded Kafka + H2, ~10s
-mvn test -Dtest=ReferenceOracleDiffTest                 # the reference-oracle diff alone
+mvn test                                                # 62 tests, embedded Kafka + H2, ~15s
+mvn test -Dtest=ReferenceOracleDiffTest                 # the matching-engine reference-oracle diff alone
+mvn test -Dtest=GoldenCopyReferenceOracleDiffTest       # the golden-copy reference-oracle diff alone
 mvn test -Dtest=BenchmarkRunner -Dsurefire.excludedGroups=   # the full 100,000-message run, ~10-20s
 mvn test -Dtest=CrossFormatBenchmarkRunner -Dsurefire.excludedGroups=   # the 30-seeded gateway run
+mvn test -Dtest=GoldenCopyBenchmarkRunner -Dsurefire.excludedGroups= # the 40-seeded / 250,000-record golden-copy run
+mvn spring-boot:run                                     # serves the golden-copy REST API on :8080
+curl localhost:8080/api/golden-copy/securities/CUSIP/<identifier>   # lineage-annotated golden record
+curl localhost:8080/v3/api-docs                         # springdoc-generated OpenAPI document
 mvn -DskipTests package                                 # build the runnable jar
 ```
 
@@ -485,3 +608,10 @@ regardless of what order the feed hands it messages in.
 - **The price tolerance is basis points of the average of the two
   quoted prices**; a real settlement system might reasonably tolerance
   against a reference/mid price instead, which this ruleset does not model.
+- **The golden-copy security master has no versioning.** Each run
+  recomputes the golden record from scratch; there is no append-only
+  history of how a field's lineage changed over time, unlike the matching
+  engine's persisted break and matched-position history. A vendor feed is
+  also assumed internally consistent (one native identifier scheme, no
+  within-feed duplicates); cross-feed, not within-feed, disagreement is
+  what this extension resolves.

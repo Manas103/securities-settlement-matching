@@ -1,0 +1,20 @@
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.110 s -- in com.manas.settlementmatch.engine.MatchingEngineTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.104 s -- in com.manas.settlementmatch.engine.ReferenceOracleDiffTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.029 s -- in com.manas.settlementmatch.gateway.CrossFormatReconciliationGateTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.manas.settlementmatch.gateway.DelimitedPostTradeFileParserTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in com.manas.settlementmatch.gateway.FixAllocationMessageParserTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in com.manas.settlementmatch.gateway.FpmlConfirmationParserTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.173 s -- in com.manas.settlementmatch.gateway.ReferenceOracleReconciliationGateDiffTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.036 s -- in com.manas.settlementmatch.goldencopy.GoldenCopyConsolidationEngineTest
+golden-copy reference-oracle diff: sample size = 400, fast engine securities = 400, oracle securities = 400
+golden-copy reference-oracle diff: exact agreement = true
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.058 s -- in com.manas.settlementmatch.goldencopy.GoldenCopyReferenceOracleDiffTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.527 s -- in com.manas.settlementmatch.goldencopy.GoldenCopySecurityControllerIntegrationTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.028 s -- in com.manas.settlementmatch.goldencopy.IdentifierCrosswalkTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in com.manas.settlementmatch.goldencopy.SurvivorshipRuleSetTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.248 s -- in com.manas.settlementmatch.integration.SettlementMatchingIntegrationTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.017 s -- in com.manas.settlementmatch.tolerance.ToleranceRuleSetTest
+[INFO] Tests run: 62, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+
+Command: mvn test

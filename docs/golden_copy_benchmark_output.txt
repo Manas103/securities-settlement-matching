@@ -1,0 +1,43 @@
+=== Golden-Copy Security Master -- survivorship benchmark run ===
+started: 2026-10-02T01:58:53.473185Z
+
+-- claim: four disagreeing simulated vendor feeds, each on its own identifier scheme --
+CUSIP_VENDOR (Argus Reference Data), native scheme CUSIP, 10 records, sample native id = 000000000
+ISIN_VENDOR (Meridian Securities Data), native scheme ISIN, 10 records, sample native id = US0000000002
+SEDOL_VENDOR (Northbridge Market Data), native scheme SEDOL, 10 records, sample native id = 0000000
+TICKER_VENDOR (Coastline Ticker Feed), native scheme TICKER, 10 records, sample native id = AAAA
+genuine field-level cross-vendor disagreements present in this 10-security demo sample: 19
+result: true
+
+-- claim: each vendor feed keyed on its own identifier scheme (CUSIP / ISIN / SEDOL / ticker) --
+security SEC-00000000: cusip=000000000 isin=US0000000002 sedol=0000000 ticker=AAAA
+all four schemes resolve back to the same internal key: true
+
+-- claim: declared per-field survivorship precedence (goldencopy-survivorship-rules.yml) --
+name: precedence=[CUSIP_VENDOR, ISIN_VENDOR, SEDOL_VENDOR, TICKER_VENDOR] dataOwner="Reference Data Operations - Security Master Desk"
+country: precedence=[ISIN_VENDOR, CUSIP_VENDOR, SEDOL_VENDOR] dataOwner="Reference Data Operations - Security Master Desk"
+currency: precedence=[CUSIP_VENDOR, SEDOL_VENDOR] dataOwner="Reference Data Operations - Security Master Desk"
+sector: precedence=[] dataOwner="Sector Taxonomy Committee"
+maturity: precedence=[CUSIP_VENDOR, ISIN_VENDOR, SEDOL_VENDOR, TICKER_VENDOR] dataOwner="Fixed Income Reference Data Desk"
+coupon: precedence=[CUSIP_VENDOR, ISIN_VENDOR] dataOwner="Fixed Income Reference Data Desk"
+exchange: precedence=[TICKER_VENDOR] dataOwner="Listings and Market Structure Desk"
+(the held-for-named-owner path itself is exercised by GoldenCopyConsolidationEngineTest; see docs/golden_copy_test_output.txt)
+
+-- claim: 40 of 40 seeded cross-vendor conflicts resolved by the correct rule or held --
+correct: 40 / 40
+
+-- claim: 0 silent merges over 250,000 records --
+securities consolidated: 250000 / 250000
+consolidation wall time: 318 ms
+total golden fields evaluated: 1750000
+resolved fields: 1731144
+held fields: 18856
+silent merges detected: 0
+
+(the exact-agreement-with-reference-oracle claim is measured by GoldenCopyReferenceOracleDiffTest at a 400-security sample, part of the default mvn test run; see docs/golden_copy_test_output.txt)
+
+finished: 2026-10-02T01:58:55.166264400Z
+
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.790 s -- in com.manas.settlementmatch.bench.GoldenCopyBenchmarkRunner
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS

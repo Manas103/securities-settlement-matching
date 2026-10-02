@@ -29,6 +29,12 @@ settlement:
     topic: settlement-instructions
   tolerance-rules-resource: tolerance-rules.yml
 
+golden-copy:
+  demo-security-count: 25
+  demo-missingness-rate: 0.1
+  demo-disagreement-rate: 0.3
+  demo-seed: 20260701
+
 logging:
   level:
     com.manas.settlementmatch: INFO

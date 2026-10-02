@@ -1,0 +1,41 @@
+# Per-field survivorship precedence for the golden-copy security master.
+# This is data, not code, the same discipline tolerance-rules.yml already
+# follows for the settlement matching engine. Loaded once by
+# SurvivorshipRuleSetLoader.
+#
+# precedence: an ordered list of vendors to try in turn; the first vendor in
+#   the list that actually carries a non-null value for this field wins, and
+#   that vendor's own record id becomes the field's lineage. An empty list
+#   means no precedence is declared at all for this field: any cross-vendor
+#   disagreement is held for the named data owner rather than guessed.
+# dataOwner: who the field is held for when precedence (declared or absent)
+#   cannot resolve it: the top-precedence vendor (and every vendor below it)
+#   missing for this security, or, for an empty precedence list, a genuine
+#   cross-vendor disagreement.
+fields:
+  name:
+    precedence: [CUSIP_VENDOR, ISIN_VENDOR, SEDOL_VENDOR, TICKER_VENDOR]
+    dataOwner: "Reference Data Operations - Security Master Desk"
+  country:
+    precedence: [ISIN_VENDOR, CUSIP_VENDOR, SEDOL_VENDOR]
+    dataOwner: "Reference Data Operations - Security Master Desk"
+  currency:
+    precedence: [CUSIP_VENDOR, SEDOL_VENDOR]
+    dataOwner: "Reference Data Operations - Security Master Desk"
+  sector:
+    # Deliberately no declared precedence: sector taxonomy differs enough across vendors
+    # (GICS-like vs. house classification) that this desk has not ranked one vendor over
+    # another for it. Agreement resolves; disagreement is always held.
+    precedence: []
+    dataOwner: "Sector Taxonomy Committee"
+  maturity:
+    precedence: [CUSIP_VENDOR, ISIN_VENDOR, SEDOL_VENDOR, TICKER_VENDOR]
+    dataOwner: "Fixed Income Reference Data Desk"
+  coupon:
+    precedence: [CUSIP_VENDOR, ISIN_VENDOR]
+    dataOwner: "Fixed Income Reference Data Desk"
+  exchange:
+    # A single, non-fallback tie-break: the ticker vendor is the listing authority of
+    # record for exchange, and no other vendor is trusted as a substitute if it is missing.
+    precedence: [TICKER_VENDOR]
+    dataOwner: "Listings and Market Structure Desk"
